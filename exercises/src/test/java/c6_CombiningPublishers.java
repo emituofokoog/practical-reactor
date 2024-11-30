@@ -42,7 +42,7 @@ public class c6_CombiningPublishers extends CombiningPublishersBase {
         //todo: feel free to change code as you need
         Mono<String> currentUserEmail = null;
         Mono<String> currentUserMono = getCurrentUser();
-        getUserEmail(null);
+        currentUserEmail = getUserEmail(currentUserMono.block());
 
         //don't change below this line
         StepVerifier.create(currentUserEmail)
@@ -60,8 +60,8 @@ public class c6_CombiningPublishers extends CombiningPublishersBase {
     @Test
     public void task_executor() {
         //todo: feel free to change code as you need
-        Flux<Void> tasks = null;
-        taskExecutor();
+        Flux<Void> tasks =
+        taskExecutor().flatMap(m -> m);
 
         //don't change below this line
         StepVerifier.create(tasks)
@@ -79,8 +79,8 @@ public class c6_CombiningPublishers extends CombiningPublishersBase {
     @Test
     public void streaming_service() {
         //todo: feel free to change code as you need
-        Flux<Message> messageFlux = null;
-        streamingService();
+        Flux<Message> messageFlux =
+                streamingService().block();
 
         //don't change below this line
         StepVerifier.create(messageFlux)
@@ -98,9 +98,8 @@ public class c6_CombiningPublishers extends CombiningPublishersBase {
     @Test
     public void i_am_rubber_you_are_glue() {
         //todo: feel free to change code as you need
-        Flux<Integer> numbers = null;
-        numberService1();
-        numberService2();
+        Flux<Integer> numbers = Flux.concat(numberService1(), numberService2());
+
 
         //don't change below this line
         StepVerifier.create(numbers)
@@ -124,8 +123,8 @@ public class c6_CombiningPublishers extends CombiningPublishersBase {
     @Test
     public void task_executor_again() {
         //todo: feel free to change code as you need
-        Flux<Void> tasks = null;
-        taskExecutor();
+        Flux<Void> tasks =
+        taskExecutor().concatMap(m -> m);
 
         //don't change below this line
         StepVerifier.create(tasks)
@@ -142,9 +141,8 @@ public class c6_CombiningPublishers extends CombiningPublishersBase {
     @Test
     public void need_for_speed() {
         //todo: feel free to change code as you need
-        Flux<String> stonks = null;
-        getStocksGrpc();
-        getStocksRest();
+        Flux<String> stonks = Flux.firstWithSignal(getStocksGrpc(), getStocksRest());
+
 
         //don't change below this line
         StepVerifier.create(stonks)
@@ -160,9 +158,8 @@ public class c6_CombiningPublishers extends CombiningPublishersBase {
     @Test
     public void plan_b() {
         //todo: feel free to change code as you need
-        Flux<String> stonks = null;
-        getStocksLocalCache();
-        getStocksRest();
+        Flux<String> stonks =
+        getStocksLocalCache().switchIfEmpty(getStocksRest());
 
         //don't change below this line
         StepVerifier.create(stonks)
@@ -179,9 +176,16 @@ public class c6_CombiningPublishers extends CombiningPublishersBase {
     @Test
     public void mail_box_switcher() {
         //todo: feel free to change code as you need
-        Flux<Message> myMail = null;
-        mailBoxPrimary();
-        mailBoxSecondary();
+        Flux<Message> myMail =
+        mailBoxPrimary().switchOnFirst((signal, flux) -> {
+            if (signal.hasValue() && signal.get().metaData.contains("spam")) {
+                // 如果第一个消息包含“spam”，切换到第二个邮箱
+                return mailBoxSecondary();
+            } else {
+                // 否则，继续读取第一个邮箱的所有消息
+                return flux;
+            }
+        });
 
         //don't change below this line
         StepVerifier.create(myMail)
@@ -203,7 +207,7 @@ public class c6_CombiningPublishers extends CombiningPublishersBase {
     public void instant_search() {
         //todo: feel free to change code as you need
         autoComplete(null);
-        Flux<String> suggestions = userSearchInput()
+        Flux<String> suggestions = userSearchInput().switchMap(s -> autoComplete(s))
                 //todo: use one operator only
                 ;
 
@@ -223,7 +227,8 @@ public class c6_CombiningPublishers extends CombiningPublishersBase {
     public void prettify() {
         //todo: feel free to change code as you need
         //todo: use when,and,then...
-        Mono<Boolean> successful = null;
+        Mono<Boolean> successful = Mono.when(openFile()).then(writeToFile("0x3522285912341")).then(closeFile())
+                .thenReturn(true);
 
         openFile();
         writeToFile("0x3522285912341");
@@ -241,13 +246,15 @@ public class c6_CombiningPublishers extends CombiningPublishersBase {
 
     /**
      * Before reading from a file we need to open file first.
+     * openFile() 方法返回一个 Mono，表示文件打开操作的完成。
+     * readFile() 方法返回一个 Flux<String>，表示文件内容的每一行。
+     * thenMany 方法确保只有在文件成功打开后才会开始读取文件。
+     * 最终，fileLines 变量包含文件内容的每一行，作为一个 Flux<String>。
      */
     @Test
     public void one_to_n() {
         //todo: feel free to change code as you need
-        Flux<String> fileLines = null;
-        openFile();
-        readFile();
+        Flux<String> fileLines = openFile().thenMany(readFile());
 
         StepVerifier.create(fileLines)
                     .expectNext("0x1", "0x2", "0x3")
@@ -261,9 +268,10 @@ public class c6_CombiningPublishers extends CombiningPublishersBase {
     @Test
     public void acid_durability() {
         //todo: feel free to change code as you need
-        Flux<String> committedTasksIds = null;
-        tasksToExecute();
-        commitTask(null);
+        Flux<String> committedTasksIds =
+                //tasksToExecute().concatMap(task->task.flatMap(taskId->commitTask(taskId).thenReturn(taskId)));
+
+                tasksToExecute().map(taskMono->taskMono.doOnNext(this::commitTask).block());
 
         //don't change below this line
         StepVerifier.create(committedTasksIds)
